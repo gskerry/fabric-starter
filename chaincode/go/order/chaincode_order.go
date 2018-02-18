@@ -43,7 +43,7 @@ func (t *OrderChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 	function, args := stub.GetFunctionAndParameters()
 	if function == "create" {
-		return t.create(stub, args)
+		return t.create(stub, args, org)
 	} else if function == "complete" {
 		return t.complete(stub, args)
 	} else if function == "query" {
@@ -53,28 +53,71 @@ func (t *OrderChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	return pb.Response{Status:403, Message:"Invalid invoke function name."}
 }
 
-func (t *OrderChaincode) create(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *OrderChaincode) create(stub shim.ChaincodeStubInterface, args []string, org string) pb.Response {
 
-	var order Order
+	if org == "retailer" {
+		var order Order
 
-	orderString := args[0]
+		orderString := args[0]
 
-	err := json.Unmarshal([]byte(orderString), &order) //unmarshal it aka JSON.parse()
-	if err != nil {
-		return shim.Error(err.Error())
+		err := json.Unmarshal([]byte(orderString), &order) //unmarshal it aka JSON.parse()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+
+		key, err := stub.CreateCompositeKey("Order", []string{order.Id})
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+
+		err = stub.PutState(key, []byte(orderString))
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+
+		return shim.Success(nil)
+	} else if org == "distributor" {
+		// query retailer-distributor for ready orders
+		args := [][]byte{[]byte("query"), []byte("ready")}
+
+		response := stub.InvokeChaincode("order", args, "retailer-distributor")
+
+		logger.Debug(string(response.Payload))
+
+		if response.Status != 200 {
+			return shim.Error("Got unexpected return from InvokeChaincode")
+		}
+
+		var orders []Order
+
+		err := json.Unmarshal(response.Payload, &orders)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+
+		for _, order := range orders {
+			order.Status = "open"
+
+			productionOrderBytes, err := json.Marshal(order)
+			if err != nil {
+				return shim.Error(err.Error())
+			}
+
+			key, err := stub.CreateCompositeKey("Order", []string{order.Id})
+			if err != nil {
+				return shim.Error(err.Error())
+			}
+
+			err = stub.PutState(key, productionOrderBytes)
+			if err != nil {
+				return shim.Error(err.Error())
+			}
+		}
+		return shim.Success(nil)
+
+	} else {
+		return pb.Response{Status:403, Message:"Don't know how to handle org " + org}
 	}
-
-	key, err := stub.CreateCompositeKey("Order", []string{order.Id})
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-
-	err = stub.PutState(key, []byte(orderString))
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-
-	return shim.Success(nil)
 }
 
 func (t *OrderChaincode) complete(stub shim.ChaincodeStubInterface, args []string) pb.Response {

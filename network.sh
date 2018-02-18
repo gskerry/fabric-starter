@@ -21,8 +21,8 @@ COMPOSE_FILE_DEV=ledger/docker-composedev.yaml
 
 CHAINCODE_COMMON_NAME=transport
 CHAINCODE_BILATERAL_NAME=order
-CHAINCODE_COMMON_INIT='{"Args":["init","a","100","b","100"]}'
-CHAINCODE_BILATERAL_INIT='{"Args":["init","a","100","b","100"]}'
+CHAINCODE_COMMON_INIT='{"Args":["init"]}'
+CHAINCODE_BILATERAL_INIT='{"Args":["init"]}'
 
 DEFAULT_ORDERER_PORT=7050
 DEFAULT_WWW_PORT=8080
