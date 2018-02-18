@@ -3,7 +3,7 @@
 starttime=$(date +%s)
 
 # defaults; export these variables before executing this script
-: ${DOMAIN:="example.com"}
+: ${DOMAIN:="fabric-supply-chain.com"}
 : ${IP_ORDERER:="54.234.201.67"}
 : ${ORG1:="retailer"}
 : ${ORG2:="distributor"}
